@@ -2,7 +2,8 @@
  GreyBeard's Repo of Ninjatrader scripts. Use at your own risk.
  
  Many of my scripts are for use with TradeSaber's Predator tool - https://tradesaber.com/
-
+ I do this for the chalange, but if you want to say thanks, Buy Me a Coffee - https://buymeacoffee.com/greybeardcode
+ All code is in the public domain, let me know if you want any changes.
 # Current Indicators and Strategies
 
 + **gbSaberADXFilter.cs** - ADX Filer for Trade Saber Predator. 
