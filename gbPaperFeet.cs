@@ -37,7 +37,7 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
 			{
 				Description									= @"gbPaperFeet";
 				Name										= "gbPaperFeet";
-				Calculate									= Calculate.OnEachTick;
+				Calculate									= Calculate.OnBarClose;  // TO had Calculate.OnEachTick;
 				IsOverlay									= false;
 				DisplayInDataBox							= true;
 				DrawOnPricePanel							= false;
@@ -212,34 +212,32 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
 			}
 			
 			// Add the Indicators for Trade Saber
-			if (alertOn)
+			if (CrossBelow(RSI, 0.8, 1) && dotStatus == "red")
             {
-                if (CrossBelow(RSI, 0.8, 1) && dotStatus == "red")
-                {
- 					Print(" Do a short " + RSI );
-					Draw.ArrowDown(this, "Short" + CurrentBar, true, 0, High[0] + TickSize + 10, Brushes.Red , true);
-					inShort = true;
-                }
-                if (CrossAbove(RSI, 0.2, 1) && dotStatus == "green")
-                {
-					Print(" Do a long " + RSI );
-					Draw.ArrowUp(this, "Long" + CurrentBar, true, 0, Low[0] - TickSize - 10, Brushes.Green, true);
-					inLong = true;
-                }
-				if ( inLong == true && dotStatus == "red") 
-				{
-					Print("Exit Long");
-					Draw.Square(this, "ExitLong" + CurrentBar, true, 0, Low[0] - TickSize - 10, Brushes.Red, true);
-					inLong = false;
-				}
-				if ( inShort == true && dotStatus == "green") 
-				{
-					Print("Exit Short");
-					Draw.Square(this, "ExitShort" + CurrentBar, true, 0, High[0] + TickSize +10, Brushes.Green, true);
-					inShort = false;
-				}
-            
+				//Print(" Do a short " + RSI[0] );
+				Draw.ArrowDown(this, "Short" + CurrentBar, true, 0, High[0] + TickSize + 10, Brushes.Red , true);
+				inShort = true;
             }
+            if (CrossAbove(RSI, 0.2, 1) && dotStatus == "green")
+            {
+				//Print(" Do a long " + RSI[0] );
+				Draw.ArrowUp(this, "Long" + CurrentBar, true, 0, Low[0] - TickSize - 10, Brushes.Green, true);
+				inLong = true;
+            }
+			if ( inLong == true && dotStatus == "red") 
+			{
+				//Print("Exit Long");
+				Draw.Square(this, "ExitLong" + CurrentBar, true, 0, Low[0] - TickSize - 10, Brushes.Red, true);
+				inLong = false;
+			}
+			if ( inShort == true && dotStatus == "green") 
+			{
+				//Print("Exit Short");
+				Draw.Square(this, "ExitShort" + CurrentBar, true, 0, High[0] + TickSize +10, Brushes.Green, true);
+				inShort = false;
+			}
+            
+            
 			
             inited = true;
         }
