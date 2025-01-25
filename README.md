@@ -18,5 +18,6 @@
  The inspiration was https://youtu.be/OY7TqQvj4Bs?si=pGgVUE8X0ZEvWE9S  He says the best red folder events are  Non-Farm (NFP), Core CPI, & Core PPI.
 
 
-+ **gbPaperFeet.cs** -  Modified version fo Trader Oracle's PaperFeet to place indicators on the chart for Trade Saber Predator https://youtu.be/HeJOxQ7_fhM?si=XDq6wDu_qhTnE7gV  
- Program Predator to Enter Long on "Long" and Short on "Short" Use "ExitLong" and "ExitShort" for the exit signal.
++ **gbPaperFeet.cs** -  Modified version of Trader Oracle's PaperFeet to place indicators on the chart for Trade Saber Predator https://youtu.be/HeJOxQ7_fhM?si=XDq6wDu_qhTnE7gV  
+ Program Predator to Enter Long on "Long" and Short on "Short" Use "ExitLong" and "ExitShort" for the exit signal. Added checkbox to allow generating signal on yellow dots. 
+ Added ability to customize cross over trigers

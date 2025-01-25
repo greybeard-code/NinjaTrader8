@@ -54,6 +54,9 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
 				dotStatus = "";
 				inLong = false;
 				inShort = false;
+				tradeYellow = true;
+				crossLong = 0.20;
+				crossShort = 0.80;
 
                 AddPlot(new Stroke(Brushes.WhiteSmoke, 3), PlotStyle.Line, "RSI");
 				AddPlot(Brushes.Red, "OS");
@@ -101,7 +104,7 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
 
         Series<double> w, beta, alpha, Go, Gh, Gl, Gc, o, h, l, c, CU1, CU2, CU, CD1, CD2, CD, L0, L1, L2, L3;
         Series<double> s1, HAOpen, HAHigh, HALow, HAClose;
-        bool inited, inLong, inShort;
+        bool inited, inLong, inShort ;
 		string dotStatus;
 		
         protected override void OnBarUpdate()
@@ -170,20 +173,20 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
             }
 
             RSI[0] = (CU[0] + CD[0] != 0 ? CU[0] / (CU[0] + CD[0]) : 0); 
-            OS[0] = 0.2;     //OS.HideBubble(); OS.HideTitle();
-            OB[0] = 0.8;     //OB.HideBubble(); OB.HideTitle();
+            OS[0] = crossLong;     //OS.HideBubble(); OS.HideTitle();
+            OB[0] = crossShort;     //OB.HideBubble(); OB.HideTitle();
             M[0] = 0.5;      //M.SetStyle(Curve.long_dash);   //M.HideBubble(); M.HideTitle();
             FEh[0] = 0.618;  //FEh.SetStyle(Curve.short_DASH); //FEh.HideBubble(); FEh.HideTitle();
             FEl[0] = 0.382;  //FEl.SetStyle(Curve.short_DASH);  // FEl.HideBubble(); FEl.HideTitle();
            
 			if (alertOn)  // Play the TO Alert Sounds
             {
-                if (CrossBelow(RSI, 0.8, 1))
+                if (CrossBelow(RSI, crossShort, 1))
                 {
                     Alert(CurrentBar + "CrossBelow", Priority.Medium, "Rsi Cross Below", SoundFileName_, 0, Brushes.Black, Brushes.Orange);
                     lastAlertedBar = CurrentBar;
                 }
-                if (CrossAbove(RSI, 0.2, 1))
+                if (CrossAbove(RSI, crossLong, 1))
                 {
                     Alert(CurrentBar + "CrossAbove", Priority.Medium, "Rsi Cross Above", SoundFileName_, 0, Brushes.Black, Brushes.Orange);
                     lastAlertedBar = CurrentBar;
@@ -212,13 +215,14 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
 			}
 			
 			// Add the Indicators for Trade Saber
-			if (CrossBelow(RSI, 0.8, 1) && dotStatus == "red")
+			// adding test for trade yellow
+			if (CrossBelow(RSI, crossShort, 1) && ( dotStatus == "red" || ( tradeYellow == true && dotStatus == "yellow")  )  )
             {
 				//Print(" Do a short " + RSI[0] );
 				Draw.ArrowDown(this, "Short" + CurrentBar, true, 0, High[0] + TickSize + 10, Brushes.Red , true);
 				inShort = true;
             }
-            if (CrossAbove(RSI, 0.2, 1) && dotStatus == "green")
+            if (CrossAbove(RSI, crossLong, 1) && (dotStatus == "green" || ( tradeYellow == true && dotStatus == "yellow")  ))
             {
 				//Print(" Do a long " + RSI[0] );
 				Draw.ArrowUp(this, "Long" + CurrentBar, true, 0, Low[0] - TickSize - 10, Brushes.Green, true);
@@ -301,6 +305,21 @@ namespace NinjaTrader.NinjaScript.Indicators.GreyBeard
         }
         private bool alertOncePerBar_ = true;
         private int lastAlertedBar = 0;
+		
+		[NinjaScriptProperty]
+        [Display(Name = "Cross Long value", Order = 16, GroupName = "Trade Signals")]
+        public double crossLong  
+        {   get; set;    }
+		
+		[NinjaScriptProperty]
+        [Display(Name = "Cross Short value", Order = 17, GroupName = "Trade Signals")]
+        public double crossShort 
+        {   get; set;    }	
+		
+		[NinjaScriptProperty]
+        [Display(Name = "Trade Signal on Yellow", Order = 18, GroupName = "Trade Signals")]
+        public bool  tradeYellow
+        {   get; set;    }
 
         //
         [Browsable(false)]
@@ -364,18 +383,18 @@ namespace NinjaTrader.NinjaScript.Indicators
 	public partial class Indicator : NinjaTrader.Gui.NinjaScript.IndicatorRenderBase
 	{
 		private GreyBeard.gbPaperFeet[] cachegbPaperFeet;
-		public GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
-			return gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_);
+			return gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_, crossLong, crossShort, tradeYellow);
 		}
 
-		public GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input, int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input, int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
 			if (cachegbPaperFeet != null)
 				for (int idx = 0; idx < cachegbPaperFeet.Length; idx++)
-					if (cachegbPaperFeet[idx] != null && cachegbPaperFeet[idx].nFE == nFE && cachegbPaperFeet[idx].alertOn == alertOn && cachegbPaperFeet[idx].Glength == glength && cachegbPaperFeet[idx].betaDev == betaDev && cachegbPaperFeet[idx].data == data && cachegbPaperFeet[idx].EnableAlerts_ == enableAlerts_ && cachegbPaperFeet[idx].SoundFileName_ == soundFileName_ && cachegbPaperFeet[idx].AlertOncePerBar_ == alertOncePerBar_ && cachegbPaperFeet[idx].EqualsInput(input))
+					if (cachegbPaperFeet[idx] != null && cachegbPaperFeet[idx].nFE == nFE && cachegbPaperFeet[idx].alertOn == alertOn && cachegbPaperFeet[idx].Glength == glength && cachegbPaperFeet[idx].betaDev == betaDev && cachegbPaperFeet[idx].data == data && cachegbPaperFeet[idx].EnableAlerts_ == enableAlerts_ && cachegbPaperFeet[idx].SoundFileName_ == soundFileName_ && cachegbPaperFeet[idx].AlertOncePerBar_ == alertOncePerBar_ && cachegbPaperFeet[idx].crossLong == crossLong && cachegbPaperFeet[idx].crossShort == crossShort && cachegbPaperFeet[idx].tradeYellow == tradeYellow && cachegbPaperFeet[idx].EqualsInput(input))
 						return cachegbPaperFeet[idx];
-			return CacheIndicator<GreyBeard.gbPaperFeet>(new GreyBeard.gbPaperFeet(){ nFE = nFE, alertOn = alertOn, Glength = glength, betaDev = betaDev, data = data, EnableAlerts_ = enableAlerts_, SoundFileName_ = soundFileName_, AlertOncePerBar_ = alertOncePerBar_ }, input, ref cachegbPaperFeet);
+			return CacheIndicator<GreyBeard.gbPaperFeet>(new GreyBeard.gbPaperFeet(){ nFE = nFE, alertOn = alertOn, Glength = glength, betaDev = betaDev, data = data, EnableAlerts_ = enableAlerts_, SoundFileName_ = soundFileName_, AlertOncePerBar_ = alertOncePerBar_, crossLong = crossLong, crossShort = crossShort, tradeYellow = tradeYellow }, input, ref cachegbPaperFeet);
 		}
 	}
 }
@@ -384,14 +403,14 @@ namespace NinjaTrader.NinjaScript.MarketAnalyzerColumns
 {
 	public partial class MarketAnalyzerColumn : MarketAnalyzerColumnBase
 	{
-		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
-			return indicator.gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_);
+			return indicator.gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_, crossLong, crossShort, tradeYellow);
 		}
 
-		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input , int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input , int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
-			return indicator.gbPaperFeet(input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_);
+			return indicator.gbPaperFeet(input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_, crossLong, crossShort, tradeYellow);
 		}
 	}
 }
@@ -400,14 +419,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 {
 	public partial class Strategy : NinjaTrader.Gui.NinjaScript.StrategyRenderBase
 	{
-		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
-			return indicator.gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_);
+			return indicator.gbPaperFeet(Input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_, crossLong, crossShort, tradeYellow);
 		}
 
-		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input , int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_)
+		public Indicators.GreyBeard.gbPaperFeet gbPaperFeet(ISeries<double> input , int nFE, bool alertOn, int glength, int betaDev, NinjaTrader.NinjaScript.Indicators.GreyBeard.gbPaperFeet.DataTypeEnum data, bool enableAlerts_, string soundFileName_, bool alertOncePerBar_, double crossLong, double crossShort, bool tradeYellow)
 		{
-			return indicator.gbPaperFeet(input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_);
+			return indicator.gbPaperFeet(input, nFE, alertOn, glength, betaDev, data, enableAlerts_, soundFileName_, alertOncePerBar_, crossLong, crossShort, tradeYellow);
 		}
 	}
 }
