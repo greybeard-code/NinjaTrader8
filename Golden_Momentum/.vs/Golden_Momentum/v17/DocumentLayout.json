@@ -1,0 +1,88 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|c:\\dev\\ninjatrader8\\golden_momentum\\system\\runtime\\compilerservices\\refsafetyrulesattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|solutionrelative:system\\runtime\\compilerservices\\refsafetyrulesattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|c:\\dev\\ninjatrader8\\golden_momentum\\initializedelegate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|solutionrelative:initializedelegate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|c:\\dev\\ninjatrader8\\golden_momentum\\exitdelegate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|solutionrelative:exitdelegate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|c:\\dev\\ninjatrader8\\golden_momentum\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CA12C23-18F4-4395-84B8-B763D4D2F15F}|Golden_Momentum.csproj|solutionrelative:assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RefSafetyRulesAttribute.cs",
+              "DocumentMoniker": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\System\\Runtime\\CompilerServices\\RefSafetyRulesAttribute.cs",
+              "RelativeDocumentMoniker": "System\\Runtime\\CompilerServices\\RefSafetyRulesAttribute.cs",
+              "ToolTip": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\System\\Runtime\\CompilerServices\\RefSafetyRulesAttribute.cs",
+              "RelativeToolTip": "System\\Runtime\\CompilerServices\\RefSafetyRulesAttribute.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-21T01:44:53.071Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "InitializeDelegate.cs",
+              "DocumentMoniker": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\InitializeDelegate.cs",
+              "RelativeDocumentMoniker": "InitializeDelegate.cs",
+              "ToolTip": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\InitializeDelegate.cs",
+              "RelativeToolTip": "InitializeDelegate.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-21T01:44:38.964Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ExitDelegate.cs",
+              "DocumentMoniker": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\ExitDelegate.cs",
+              "RelativeDocumentMoniker": "ExitDelegate.cs",
+              "ToolTip": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\ExitDelegate.cs",
+              "RelativeToolTip": "ExitDelegate.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-21T01:44:32.774Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AssemblyInfo.cs",
+              "DocumentMoniker": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\AssemblyInfo.cs",
+              "RelativeDocumentMoniker": "AssemblyInfo.cs",
+              "ToolTip": "C:\\Dev\\NinjaTrader8\\Golden_Momentum\\AssemblyInfo.cs",
+              "RelativeToolTip": "AssemblyInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-21T01:44:24.147Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

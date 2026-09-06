@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--Project was exported from assembly: C:\Users\dcjon\Downloads\Golden_Momentum\Golden_Momentum.dll-->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{6CA12C23-18F4-4395-84B8-B763D4D2F15F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Golden_Momentum</AssemblyName>
+    <ApplicationVersion>1.0.0.1</ApplicationVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="netstandard" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="_003CModule_003E.cs" />
+    <Compile Include="InitializeDelegate.cs" />
+    <Compile Include="ExitDelegate.cs" />
+    <Compile Include="_003CAgileDotNetRT_003E.cs" />
+    <Compile Include="System\Runtime\CompilerServices\RefSafetyRulesAttribute.cs" />
+    <Compile Include="QX0=\TH0=.cs" />
+    <Compile Include="NinjaTrader\Custom\Resource.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\AndrewsPitchfork.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Draw.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Arc.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ChartMarker.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ChartMarkerSize.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Dot.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Square.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Diamond.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ArrowMarkerBase.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ArrowDown.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ArrowUp.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TriangleBase.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TriangleDown.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TriangleUp.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciLevels.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciCircle.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciRetracements.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciExtensions.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciTimeExtensions.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\FibonacciCircleTimeTypeConverter.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\GannFan.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\GannAngle.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\GannAngleTypeConverter.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\GannAngleContainer.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ArrowLine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ExtendedLine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\HorizontalLine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Line.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\VerticalLine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Ray.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PathTool.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PathToolSegment.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PathToolSegmentContainer.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Polygon.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PriceLevel.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PriceLevelTypeConverter.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\PriceLevelContainer.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Region.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegionHighlightMode.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegionHighlightBase.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegionHighlightX.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegionHighlightY.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegressionChannelTypeConverter.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RegressionChannel.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\RiskReward.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Ruler.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\ShapeBase.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Ellipse.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Rectangle.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Triangle.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\Text.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TextPosition.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TextPositionFine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TextFixed.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TextFixedBase.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TextFixedFine.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TimeCycles.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TrendChannel.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\DrawingTools\TrendLevel.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Indicators\Indicator.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Indicators\StdDev.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Indicators\RSI.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Indicators\EMA.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Indicators\SMA.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\MarketAnalyzerColumns\MarketAnalyzerColumn.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Strategies\Strategy.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\Strategies\Golden_Momentum.cs" />
+    <Compile Include="NinjaTrader\NinjaScript\PerformanceMetrics\PerformanceMetric.cs" />
+    <Compile Include="AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="30438cbb-4bdb-4fa0-b7e3-dc1c3424d986" />
+    <EmbeddedResource Include="ea2b14ad-abc7-41d9-8ed6-3370288bfa05" />
+    <EmbeddedResource Include="NinjaTrader\Custom\Resource.resx" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+</Project>
