@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<NinjaTrader>
+  <AtmStrategy xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <IsVisible>true</IsVisible>
+    <calculate2>OnBarClose</calculate2>
+    <AreLinesConfigurable>true</AreLinesConfigurable>
+    <ArePlotsConfigurable>true</ArePlotsConfigurable>
+    <BarsToLoad>0</BarsToLoad>
+    <Calculate>OnBarClose</Calculate>
+    <Displacement>0</Displacement>
+    <DisplayInDataBox>true</DisplayInDataBox>
+    <From>2099-12-01T00:00:00</From>
+    <IsAutoScale>true</IsAutoScale>
+    <Lines />
+    <MaximumBarsLookBack>TwoHundredFiftySix</MaximumBarsLookBack>
+    <Name>AtmStrategy</Name>
+    <Panel>0</Panel>
+    <Plots />
+    <ScaleJustification>Right</ScaleJustification>
+    <ShowTransparentPlotsInDataBox>false</ShowTransparentPlotsInDataBox>
+    <To>1800-01-01T00:00:00</To>
+    <IsDataSeriesRequired>false</IsDataSeriesRequired>
+    <IsOverlay>false</IsOverlay>
+    <SelectedValueSeries>0</SelectedValueSeries>
+    <Gtd>1800-01-01T00:00:00</Gtd>
+    <Template>2QTY140sl300tp+trail</Template>
+    <TimeInForce>Gtc</TimeInForce>
+    <BarsRequiredToTrade>0</BarsRequiredToTrade>
+    <Category>Atm</Category>
+    <ConnectionLossHandling>KeepRunning</ConnectionLossHandling>
+    <DaysToLoad>1</DaysToLoad>
+    <DefaultQuantity>1</DefaultQuantity>
+    <DisconnectDelaySeconds>0</DisconnectDelaySeconds>
+    <EntriesPerDirection>1</EntriesPerDirection>
+    <EntryHandling>AllEntries</EntryHandling>
+    <ExitOnSessionCloseSeconds>0</ExitOnSessionCloseSeconds>
+    <IncludeCommission>false</IncludeCommission>
+    <IsAggregated>false</IsAggregated>
+    <IsExitOnSessionCloseStrategy>false</IsExitOnSessionCloseStrategy>
+    <IsFillLimitOnTouch>false</IsFillLimitOnTouch>
+    <IsOptimizeDataSeries>false</IsOptimizeDataSeries>
+    <IsStableSession>false</IsStableSession>
+    <IsTickReplay>false</IsTickReplay>
+    <IsTradingHoursBreakLineVisible>false</IsTradingHoursBreakLineVisible>
+    <IsWaitUntilFlat>false</IsWaitUntilFlat>
+    <NumberRestartAttempts>0</NumberRestartAttempts>
+    <OptimizationPeriod>10</OptimizationPeriod>
+    <OrderFillResolution>High</OrderFillResolution>
+    <OrderFillResolutionType>Tick</OrderFillResolutionType>
+    <OrderFillResolutionValue>1</OrderFillResolutionValue>
+    <RestartsWithinMinutes>0</RestartsWithinMinutes>
+    <SetOrderQuantity>Strategy</SetOrderQuantity>
+    <Slippage>0</Slippage>
+    <StartBehavior>AdoptAccountPosition</StartBehavior>
+    <StopTargetHandling>PerEntryExecution</StopTargetHandling>
+    <SupportsOptimizationGraph>false</SupportsOptimizationGraph>
+    <TestPeriod>28</TestPeriod>
+    <TradingHoursSerializable />
+    <Brackets>
+      <Bracket>
+        <Quantity>2</Quantity>
+        <StopLoss>140</StopLoss>
+        <StopStrategy>
+          <AutoBreakEvenPlus>0</AutoBreakEvenPlus>
+          <AutoBreakEvenProfitTrigger>0</AutoBreakEvenProfitTrigger>
+          <AutoTrailSteps>
+            <AutoTrailStep>
+              <Frequency>1</Frequency>
+              <ProfitTrigger>70</ProfitTrigger>
+              <StopLoss>140</StopLoss>
+            </AutoTrailStep>
+          </AutoTrailSteps>
+          <IsSimStopEnabled>false</IsSimStopEnabled>
+          <VolumeTrigger>0</VolumeTrigger>
+          <Template>140sl400tp+barstatustrail</Template>
+        </StopStrategy>
+        <Target>400</Target>
+      </Bracket>
+    </Brackets>
+    <CalculationMode>Ticks</CalculationMode>
+    <ChaseLimit>0</ChaseLimit>
+    <EntryQuantity>2</EntryQuantity>
+    <InitialTickSize>0</InitialTickSize>
+    <IsChase>false</IsChase>
+    <IsChaseIfTouched>false</IsChaseIfTouched>
+    <IsTargetChase>false</IsTargetChase>
+    <ReverseAtStop>false</ReverseAtStop>
+    <ReverseAtTarget>false</ReverseAtTarget>
+    <UseMitForProfit>false</UseMitForProfit>
+    <UseStopLimitForStopLossOrders>false</UseStopLimitForStopLossOrders>
+    <AtmSelector>d1ee284e30bd48debca4c34e3c4e0c11</AtmSelector>
+    <OnBehalfOf />
+    <ReverseAtStopStrategyId>-1</ReverseAtStopStrategyId>
+    <ReverseAtTargetStrategyId>-1</ReverseAtTargetStrategyId>
+    <ShadowStrategyStrategyId>-1</ShadowStrategyStrategyId>
+    <ShadowTemplate />
+  </AtmStrategy>
+</NinjaTrader>

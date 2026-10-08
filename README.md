@@ -1,23 +1,35 @@
-# NinjaTrader8
- GreyBeard's Repo of Ninjatrader scripts. Use at your own risk.
- 
- Many of my scripts are for use with TradeSaber's Predator tool - https://tradesaber.com/
- I do this for the chalange, but if you want to say thanks, Buy Me a Coffee - https://buymeacoffee.com/greybeardcode
- All code is in the public domain, let me know if you want any changes.
-# Current Indicators and Strategies
+# NinjaScript
 
-+ **gbSaberADXFilter.cs** - ADX Filer for Trade Saber Predator. 
+GreyBeard's public NinjaTrader 8 code and documentation, one folder per project.
+Use at your own risk - this is trading software, not financial advice.
 
-+ **gbSaberTOWilliamsR.cs** Trader Oracle WilliamsR for Trade Saber Predator. 
+Support the work: [Buy Me a Coffee](https://buymeacoffee.com/greybeardcode)
 
-+ **gbRedFolder.cs** - Red Folder strategy for trading volatile news events. Will place a limit market order above or below (or both) of current price at a specific time.  
- Use Forex Factory https://www.forexfactory.com/calendar to find a Red Folder event. Use a 30 Second chart because NT can only look at the time of the current bar to trigger orders. 
- Script will exit after 15 minutes if the initial market orders are not filled.
- It will place the order 30 seconds before the selected time if the chart is a 30 second chart. That's what I use.
- I think it works better if you set one chart as  up and a separate account as down.  
- The inspiration was https://youtu.be/OY7TqQvj4Bs?si=pGgVUE8X0ZEvWE9S  He says the best red folder events are  Non-Farm (NFP), Core CPI, & Core PPI.
+## Projects
 
+| Folder | What |
+|---|---|
+| [`Kaiju-GodZilla/`](Kaiju-GodZilla) | GodZilla Suite: GodZillaKilla ATM strategy, GodZuki signal indicator, six sub-indicators, MONARCH reports |
+| [`gbZeus/`](gbZeus) | gbZeus strategy, GodTrades methodology and trading guide |
+| [`gbPullback5Bar/`](gbPullback5Bar) | gbPullback5Bar strategy |
+| [`AUGUR/`](AUGUR) | AUGUR Trade Intelligence - HTML trade reports from NT8 Executions exports |
+| [`gbRedFolder/`](gbRedFolder) | Red Folder news-event strategy |
+| [`TradeSaber-Predator/`](TradeSaber-Predator) | Indicators for TradeSaber's Predator (ADX filter, WilliamsR, PaperFeet) |
+| [`programming-projects/`](programming-projects) | Smaller NinjaScript projects: ATM trail manager, MultiDayDownload, PanaZilla, SATS, Terminator V2, UltimateSignals tooling |
+| [`templates/`](templates) | Blank strategy template |
+| [`archive/`](archive) | Older material kept for reference |
 
-+ **gbPaperFeet.cs** -  Modified version of Trader Oracle's PaperFeet to place indicators on the chart for Trade Saber Predator https://youtu.be/HeJOxQ7_fhM?si=XDq6wDu_qhTnE7gV  
- Program Predator to Enter Long on "Long" and Short on "Short" Use "ExitLong" and "ExitShort" for the exit signal. Added checkbox to allow generating signal on yellow dots. 
- Added ability to customize cross over trigers
+## License
+
+[MIT](LICENSE) (c) GreyBeard Consulting, for code and documents written by GreyBeard.
+
+Some files are modified versions of other authors' work (for example Trader Oracle's PaperFeet,
+and the Golden_Momentum material in `archive/`). Those remain subject to their original authors'
+terms. If you are the original author and want something changed or removed, open an issue.
+
+## How this repo is maintained
+
+Development happens in private repos (`*-private`). Finished code and documents are copied here
+by hand. Not published: Claude config (`CLAUDE.md`, `.claude/`), third-party originals and
+`old versions/` folders, vendor binaries (`.dll`), and release bundles from
+`Kaiju-GodZilla/GodZilla Trading Family`.
