@@ -1,0 +1,21 @@
+# Build output
+dist/
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated at build time
+version_info.txt
+augur.ico
+
+# Runtime output (not source)
+src/__pycache__/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp

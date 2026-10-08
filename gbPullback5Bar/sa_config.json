@@ -1,0 +1,27 @@
+{
+  "strategy": "gbPullback5Bar.cs",
+  "typeName": "gbPullback5Bar",
+  "instrument": "NQ 09-26",
+  "barType": {"type": "NinZaRenko", "value": 64, "value2": 16},
+  "from": "2026-08-01",
+  "to": "2026-09-12",
+  "capital": 50000,
+  "params": {
+    "Instrument": "NQ 09-26",
+    "InstrumentOrInstrumentList": "NQ 09-26",
+    "IsTickReplay": true,
+    "From": "2026-08-01",
+    "To": "2026-09-12",
+    "PullbackBarLimit": 5,
+    "StopOffsetTicks": 2,
+    "ProfitTargetTicks": 50,
+    "TakeLongs": true,
+    "TakeShorts": true,
+    "Contracts": 1,
+    "EnableSession": true,
+    "SessionStart": "2026-01-01T09:30:00",
+    "SessionEnd": "2026-01-01T16:45:00",
+    "DailyProfitTarget": 0,
+    "DailyMaxLoss": 0
+  }
+}

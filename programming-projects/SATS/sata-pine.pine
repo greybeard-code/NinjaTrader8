@@ -1,0 +1,1100 @@
+//@version=6
+// ══════════════════════════════════════════════════════════
+// SELF-AWARE TREND SYSTEM [WillyAlgoTrader]
+// ══════════════════════════════════════════════════════════
+// Author:  Willy | WillyAlgoTrader
+// Version: 1.9.0
+
+indicator(
+     title              = "Self-Aware Trend System [WillyAlgoTrader]",
+     shorttitle         = "SATS",
+     overlay            = true,
+     max_lines_count    = 500,
+     max_labels_count   = 500,
+     max_boxes_count    = 100,
+     max_bars_back      = 5000)
+
+// ══════════════════════════════════════════════════════════
+// 2. CONSTANTS
+// ══════════════════════════════════════════════════════════
+GRP_MAIN    = "⚙️ Main Settings"
+GRP_ADAPT   = "🧠 Adaptive Engine"
+GRP_TQI     = "📐 Trend Quality Engine"
+GRP_FILTER  = "🔍 Signal Filters (Display)"
+GRP_RISK    = "🎯 Risk Management"
+GRP_DYN_TP  = "🎯 Dynamic TP Settings"
+GRP_LEARN   = "🤖 Self-Learning"
+GRP_VISUAL  = "🎨 Visual"
+GRP_DASH    = "📊 Dashboard"
+GRP_ALERT   = "🔔 Alerts"
+GRP_COLORS  = "🎨 Colors"
+
+INDICATOR_VERSION = "v1.9.0"
+WARMUP_FLOOR      = 50
+MAX_HISTORY_SIGS  = 100
+BYPASS_SCORE      = 12.0
+HIT_COLOR_HEX     = #40E0D0
+MAX_SCORE_REF     = 102      // 6 factors × 17 max each
+
+ER_LOW_THRESH    = 0.25
+ER_HIGH_THRESH   = 0.50
+VOL_LOW_THRESH   = 0.7
+VOL_HIGH_THRESH  = 1.3
+
+EWMA_ALPHA       = 0.2
+MULT_SMOOTH_ALPHA = 0.15
+
+// ══════════════════════════════════════════════════════════
+// 3. INPUTS
+// ══════════════════════════════════════════════════════════
+
+// ── Main ──────────────────────────────────────────────────
+presetInput      = input.string("Auto", "Preset", options = ["Auto", "Custom", "Scalping", "Default", "Swing", "Crypto 24/7"], group = GRP_MAIN, tooltip = "Quick presets that override key parameters.")
+atrLenInput      = input.int(13, "ATR Length", minval = 5, maxval = 100, group = GRP_MAIN)
+baseMultInput    = input.float(2.0, "Base Band Width (xATR)", minval = 0.5, maxval = 5.0, step = 0.1, group = GRP_MAIN)
+sourceInput      = input.source(close, "Source", group = GRP_MAIN)
+
+// ── Adaptive Engine (legacy ER adaptation) ────────────────
+useAdaptiveInput    = input.bool(true, "Enable Vol-Adaptive Bands (legacy ER)", group = GRP_ADAPT, tooltip = "Legacy linear ER modulation. Kept for backwards compat — TQI Engine below is recommended.")
+erLengthInput       = input.int(20, "Efficiency Window", minval = 5, maxval = 100, group = GRP_ADAPT)
+adaptStrengthInput  = input.float(0.5, "Adaptation Strength", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_ADAPT)
+atrBaselineLenInput = input.int(100, "ATR Baseline Length", minval = 20, maxval = 500, group = GRP_ADAPT)
+
+// ── Trend Quality Engine ──────────────────────────────────
+useTqiInput          = input.bool(true, "Enable Trend Quality Engine", group = GRP_TQI, tooltip = "Master switch. Computes continuous Trend Quality Index (TQI 0..1) each bar from 4 factors. Modulates band width non-linearly.")
+qualityStrengthInput = input.float(0.4, "Quality Influence", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI, tooltip = "How aggressively TQI compresses/expands bands. 0 = no effect, 1 = maximum.")
+qualityCurveInput    = input.float(1.5, "Quality Curve Power", minval = 1.0, maxval = 3.0, step = 0.1, group = GRP_TQI, tooltip = "Non-linearity. 1.0 = linear, >1 = bands expand slowly for mild quality drops, rapidly for severe ones.")
+multSmoothInput      = input.bool(true, "Smooth Adaptive Multipliers", group = GRP_TQI, tooltip = "EMA-smooths band multipliers before applying ratchet logic. Prevents compression from sticking. RECOMMENDED ON.")
+
+useAsymBandsInput    = input.bool(true, "Asymmetric Bands", group = GRP_TQI, tooltip = "Active side (in direction of trend) tightens, passive side widens. Creates ratchet-with-leverage effect in strong trends.")
+asymStrengthInput    = input.float(0.5, "Asymmetry Strength", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI)
+
+useEffAtrInput       = input.bool(true, "Efficiency-Weighted ATR", group = GRP_TQI, tooltip = "Scale ATR by (0.5 + 0.5*ER). Clean trending volatility counts full; noisy volatility is halved.")
+
+useCharFlipInput     = input.bool(true, "Character-Flip Detection", group = GRP_TQI, tooltip = "Allow SuperTrend to flip on quality collapse, not just price break. Catches regime changes earlier.")
+charFlipMinAgeInput  = input.int(5, "Char-Flip: Min Trend Age", minval = 1, maxval = 50, group = GRP_TQI, tooltip = "Minimum bars current trend must hold before char-flip can fire. Prevents whipsaw on fresh trends.")
+charFlipHighInput    = input.float(0.55, "Char-Flip: High TQI", minval = 0.3, maxval = 0.9, step = 0.05, group = GRP_TQI)
+charFlipLowInput     = input.float(0.25, "Char-Flip: Low TQI", minval = 0.0, maxval = 0.5, step = 0.05, group = GRP_TQI)
+
+// TQI factor weights
+tqiWeightErInput     = input.float(0.35, "Weight: Efficiency", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI)
+tqiWeightVolInput    = input.float(0.20, "Weight: Volatility Regime", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI)
+tqiWeightStructInput = input.float(0.25, "Weight: Structure", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI)
+tqiWeightMomInput    = input.float(0.20, "Weight: Momentum Persist", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_TQI)
+tqiStructLenInput    = input.int(20, "Structure Window", minval = 5, maxval = 100, group = GRP_TQI, tooltip = "Lookback for structural price-position calculation.")
+tqiMomLenInput       = input.int(10, "Momentum Persist Window", minval = 3, maxval = 50, group = GRP_TQI)
+
+// ── Signal Filters (display only, kept for dashboard) ─────
+useStructureInput = input.bool(true, "Use Structure in Score (display)", group = GRP_FILTER)
+pivotLenInput     = input.int(3, "Pivot Strength", minval = 2, maxval = 10, group = GRP_FILTER)
+
+useRsiInput       = input.bool(true, "Use RSI in Score (display)", group = GRP_FILTER)
+rsiLenInput       = input.int(14, "RSI Length", minval = 5, maxval = 50, group = GRP_FILTER)
+rsiOBInput        = input.int(70, "RSI Overbought", minval = 55, maxval = 90, group = GRP_FILTER)
+rsiOSInput        = input.int(30, "RSI Oversold", minval = 10, maxval = 45, group = GRP_FILTER)
+rsiLookbackInput  = input.int(20, "RSI Memory (bars)", minval = 3, maxval = 100, group = GRP_FILTER)
+
+useVolInput        = input.bool(true, "Use Volume in Score (display)", group = GRP_FILTER)
+volLenInput        = input.int(20, "Volume Z Window", minval = 5, maxval = 100, group = GRP_FILTER)
+
+minScoreInput      = input.int(60, "Min Signal Score (display only)", minval = 0, maxval = 100, group = GRP_FILTER)
+
+// ── Risk Management ───────────────────────────────────────
+showRiskInput     = input.bool(true, "Show TP/SL Levels", group = GRP_RISK)
+slAtrMultInput    = input.float(1.5, "SL Buffer (xATR)", minval = 0.3, maxval = 5.0, step = 0.1, group = GRP_RISK)
+
+// ── TP Mode Selection ─────────────────────────────────────
+tpModeInput       = input.string("Fixed", "TP Mode", options = ["Fixed", "Dynamic"], group = GRP_RISK, tooltip = "Fixed: classic fixed R-multiples.\nDynamic: TP levels adapt to TQI and volatility regime. High TQI + trending = wider targets; low TQI + choppy = tighter targets.")
+
+tp1RInput         = input.float(1.0, "TP1 (R-multiple)", minval = 0.5, maxval = 10.0, step = 0.1, group = GRP_RISK)
+tp2RInput         = input.float(2.0, "TP2 (R-multiple)", minval = 0.5, maxval = 10.0, step = 0.1, group = GRP_RISK)
+tp3RInput         = input.float(3.0, "TP3 (R-multiple)", minval = 0.5, maxval = 10.0, step = 0.1, group = GRP_RISK)
+
+// ── Dynamic TP Tuning ─────────────────────────────────────
+dynTpTqiWeightInput  = input.float(0.6, "TQI Influence on TP", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_DYN_TP, tooltip = "⚠ These settings only apply when TP Mode = Dynamic.\nHow much TQI affects target expansion. 0 = TQI ignored, 1 = full influence.")
+dynTpVolWeightInput  = input.float(0.4, "Volatility Influence on TP", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_DYN_TP, tooltip = "How much vol regime affects targets. High vol = wider targets.")
+dynTpMinScaleInput   = input.float(0.5, "Min TP Scale", minval = 0.2, maxval = 1.0, step = 0.05, group = GRP_DYN_TP, tooltip = "Floor multiplier — TPs never shrink below base × this value. Prevents absurdly tight targets in chop.")
+dynTpMaxScaleInput   = input.float(2.0, "Max TP Scale", minval = 1.0, maxval = 4.0, step = 0.1, group = GRP_DYN_TP, tooltip = "Ceiling multiplier — TPs never expand beyond base × this value. Prevents unreachable targets.")
+dynTpFloorR1Input    = input.float(0.5, "TP1 Absolute Floor (R)", minval = 0.2, maxval = 2.0, step = 0.1, group = GRP_DYN_TP, tooltip = "TP1 will never go below this R value regardless of scaling.")
+dynTpCeilR3Input     = input.float(8.0, "TP3 Absolute Ceiling (R)", minval = 2.0, maxval = 20.0, step = 0.5, group = GRP_DYN_TP, tooltip = "TP3 will never exceed this R value regardless of scaling.")
+
+labelOffsetInput  = input.int(10, "Label Offset (bars)", minval = 10, maxval = 100, group = GRP_RISK)
+showHitsInput     = input.bool(true, "Mark TP Hits (visual)", group = GRP_RISK)
+tradeMaxAgeInput  = input.int(100, "Trade Timeout (bars)", minval = 10, maxval = 500, group = GRP_RISK)
+
+// ── Self-Learning (experimental) ──────────────────────────
+useAutoCalibInput  = input.bool(false, "Enable Auto-Calibration (experimental)", group = GRP_LEARN, tooltip = "EXPERIMENTAL: Adjusts Quality Influence via mean-reversion drift on poor edge. No guarantee of improvement — recommended off until validated on your instrument.")
+calibWindowInput   = input.int(20, "Calibration Window", minval = 5, maxval = 100, group = GRP_LEARN)
+calibBadRInput     = input.float(0.0, "Bad-Edge Threshold (R)", minval = -2.0, maxval = 1.0, step = 0.1, group = GRP_LEARN)
+calibGoodRInput    = input.float(0.7, "Good-Edge Threshold (R)", minval = 0.0, maxval = 5.0, step = 0.1, group = GRP_LEARN)
+calibStepQInput    = input.float(0.05, "Quality Step", minval = 0.01, maxval = 0.3, step = 0.01, group = GRP_LEARN)
+calibCooldownInput = input.int(5, "Calibration Cooldown (signals)", minval = 1, maxval = 50, group = GRP_LEARN)
+calibMinQInput     = input.float(0.1, "Quality Floor", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_LEARN)
+calibMaxQInput     = input.float(0.9, "Quality Ceiling", minval = 0.0, maxval = 1.0, step = 0.05, group = GRP_LEARN)
+
+resetLearningInput = input.bool(false, "Reset Learning Memory", group = GRP_LEARN)
+
+// ── Visual ────────────────────────────────────────────────
+themeInput          = input.string("Auto", "Theme", options = ["Auto", "Dark", "Light"], group = GRP_VISUAL)
+showBandsInput      = input.bool(true,  "Show SuperTrend Bands", group = GRP_VISUAL)
+showTqiColorInput   = input.bool(true,  "Color Line by TQI", group = GRP_VISUAL, tooltip = "Line transparency reflects current TQI. Bright = high quality, faded = low quality.")
+showSignalsInput    = input.bool(true,  "Show Signal Labels", group = GRP_VISUAL)
+showBgInput         = input.bool(false, "Show Trend Background", group = GRP_VISUAL)
+showWatermarkInput  = input.bool(true,  "Show Watermark", group = GRP_VISUAL)
+
+// ── Dashboard ─────────────────────────────────────────────
+showDashInput         = input.bool(true,  "Show Dashboard", group = GRP_DASH)
+showTqiBreakdownInput = input.bool(true,  "Show TQI Breakdown", group = GRP_DASH)
+showBreakdownInput    = input.bool(false, "Show Score Breakdown (legacy)", group = GRP_DASH)
+showPerfInput         = input.bool(true,  "Show Performance Stats", group = GRP_DASH)
+dashPosStr            = input.string("Top Right", "Dashboard Position", options = ["Top Left", "Top Right", "Bottom Left", "Bottom Right", "Middle Right"], group = GRP_DASH)
+
+// ── Colors ────────────────────────────────────────────────
+bullColorInput    = input.color(#00E676, "Bull", inline = "c1", group = GRP_COLORS)
+bearColorInput    = input.color(#FF5252, "Bear", inline = "c1", group = GRP_COLORS)
+slColorInput      = input.color(#FF1744, "SL",   inline = "c2", group = GRP_COLORS)
+tpColorInput      = input.color(#00E676, "TP",   inline = "c2", group = GRP_COLORS)
+
+// ── Alerts ────────────────────────────────────────────────
+enableAlertsInput = input.bool(true, "Enable Alert Signals", group = GRP_ALERT)
+webhookInput      = input.bool(false, "Webhook JSON Format", group = GRP_ALERT)
+
+// ══════════════════════════════════════════════════════════
+// 3.5  PRESET RESOLUTION + TP ORDER FIX
+// ══════════════════════════════════════════════════════════
+int tfMinutes = timeframe.in_seconds(timeframe.period) / 60
+
+string resolvedPreset = presetInput
+if presetInput == "Auto"
+    resolvedPreset := tfMinutes <= 5 ? "Scalping" : (tfMinutes <= 240 ? "Default" : "Swing")
+
+int   effectiveAtrLen   = switch resolvedPreset
+    "Scalping"    => 10
+    "Default"     => 14
+    "Swing"       => 21
+    "Crypto 24/7" => 14
+    "Custom"      => atrLenInput
+    => atrLenInput
+
+float effectiveBaseMult = switch resolvedPreset
+    "Scalping"    => 1.5
+    "Default"     => 2.0
+    "Swing"       => 2.5
+    "Crypto 24/7" => 2.8
+    "Custom"      => baseMultInput
+    => baseMultInput
+
+int   effectiveErLen    = switch resolvedPreset
+    "Scalping"    => 14
+    "Default"     => 20
+    "Swing"       => 30
+    "Crypto 24/7" => 20
+    "Custom"      => erLengthInput
+    => erLengthInput
+
+int   effectiveRsiLen   = switch resolvedPreset
+    "Scalping"    => 9
+    "Default"     => 14
+    "Swing"       => 21
+    "Crypto 24/7" => 14
+    "Custom"      => rsiLenInput
+    => rsiLenInput
+
+float effectiveSlMult   = switch resolvedPreset
+    "Scalping"    => 1.0
+    "Default"     => 1.5
+    "Swing"       => 2.0
+    "Crypto 24/7" => 2.5
+    "Custom"      => slAtrMultInput
+    => slAtrMultInput
+
+// TP order auto-fix — guarantee tp1 < tp2 < tp3
+float fixedTp1R = math.min(tp1RInput, math.min(tp2RInput, tp3RInput))
+float fixedTp3R = math.max(tp1RInput, math.max(tp2RInput, tp3RInput))
+float fixedTp2R = tp1RInput + tp2RInput + tp3RInput - fixedTp1R - fixedTp3R
+
+// ══════════════════════════════════════════════════════════
+// 4. THEME & COLORS
+// ══════════════════════════════════════════════════════════
+isDark = switch themeInput
+    "Dark"  => true
+    "Light" => false
+    =>         color.r(chart.bg_color) < 128
+
+TEXT_COLOR    = isDark ? #E0E0E0 : #1A1A1A
+TEXT_MUTED    = isDark ? color.new(#9E9E9E, 0) : color.new(#757575, 0)
+TEXT_BRIGHT   = isDark ? #FFFFFF : #000000
+TABLE_BG      = isDark ? color.new(#131722, 5) : color.new(#FFFFFF, 5)
+TABLE_BORDER  = isDark ? color.new(#2A2E39, 0) : color.new(#D0D0D0, 0)
+TABLE_ROW_ALT = isDark ? color.new(#1C2030, 0) : color.new(#F0F4F8, 0)
+HEADER_BG     = color.new(#2962FF, 0)
+HEADER_TEXT   = #FFFFFF
+LABEL_TEXT    = #FFFFFF
+WM_COLOR      = isDark ? color.new(#FFFFFF, 80) : color.new(#000000, 80)
+
+BULL_BG       = color.new(bullColorInput, 92)
+BEAR_BG       = color.new(bearColorInput, 92)
+
+NEUTRAL_YELLOW = color.new(#FFEB3B, 0)
+
+var color HIT_COLOR = color.new(HIT_COLOR_HEX, 0)
+
+// ══════════════════════════════════════════════════════════
+// 5. FUNCTIONS
+// ══════════════════════════════════════════════════════════
+
+safeDiv(float num, float den, float fallback = 0.0) =>
+    den != 0 and not na(num) and not na(den) ? num / den : fallback
+
+clamp(float v, float lo, float hi) =>
+    math.max(lo, math.min(hi, v))
+
+clampInt(int v, int lo, int hi) =>
+    math.max(lo, math.min(hi, v))
+
+calcEfficiencyRatio(float src, int len) =>
+    float change     = math.abs(src - src[len])
+    float volatility = math.sum(math.abs(src - src[1]), len)
+    safeDiv(change, volatility, 0.0)
+
+calcVolumeZ(int len) =>
+    float vMean = ta.sma(volume, len)
+    float vStd  = ta.stdev(volume, len)
+    safeDiv(volume - vMean, vStd, 0.0)
+
+mapClamp(float v, float inLo, float inHi, float outLo, float outHi) =>
+    float t = clamp(safeDiv(v - inLo, inHi - inLo, 0.0), 0.0, 1.0)
+    outLo + t * (outHi - outLo)
+
+mapClampInv(float v, float inLo, float inHi, float outHigh, float outLow) =>
+    float t = clamp(safeDiv(v - inLo, inHi - inLo, 0.0), 0.0, 1.0)
+    outHigh - t * (outHigh - outLow)
+
+getDashPos(string s) =>
+    switch s
+        "Top Left"     => position.top_left
+        "Top Right"    => position.top_right
+        "Bottom Left"  => position.bottom_left
+        "Bottom Right" => position.bottom_right
+        =>                position.middle_right
+
+erBin(float er) =>
+    er < ER_LOW_THRESH ? 0 : (er < ER_HIGH_THRESH ? 1 : 2)
+
+volBin(float vRatio) =>
+    vRatio < VOL_LOW_THRESH ? 0 : (vRatio < VOL_HIGH_THRESH ? 1 : 2)
+
+cellIdx(int eb, int vb) =>
+    eb * 3 + vb
+
+calcRealizedR(bool slHit, bool tp1H, bool tp2H, bool tp3H, float tp1R, float tp2R, float tp3R) =>
+    float realizedR = 0.0
+    if tp3H
+        realizedR := (tp1R + tp2R + tp3R) / 3.0
+    else if slHit
+        float taken = 0.0
+        float remaining = 1.0
+        if tp1H
+            taken += (1.0 / 3.0) * tp1R
+            remaining -= 1.0 / 3.0
+        if tp2H
+            taken += (1.0 / 3.0) * tp2R
+            remaining -= 1.0 / 3.0
+        realizedR := taken + remaining * (-1.0)
+    else
+        realizedR := 0.0
+    realizedR
+
+calcTimeoutR(bool tp1H, bool tp2H, bool tp3H, float tp1R, float tp2R, float tp3R) =>
+    float taken = 0.0
+    if tp1H
+        taken += (1.0 / 3.0) * tp1R
+    if tp2H
+        taken += (1.0 / 3.0) * tp2R
+    if tp3H
+        taken += (1.0 / 3.0) * tp3R
+    taken
+
+// ══════════════════════════════════════════════════════════
+// 5.3  DYNAMIC TP CALCULATOR
+// ══════════════════════════════════════════════════════════
+// Computes a scaling factor from TQI + volRatio. High quality trending
+// markets get expanded targets; choppy low-quality markets get compressed.
+//
+// Formula:
+//   tqiComponent  = tqi  mapped [0..1] → [0..1]  (linear, already 0..1)
+//   volComponent  = volRatio mapped [0.5..2.0] → [0..1]  (clamped)
+//   rawScale      = weighted blend of tqi + vol components
+//   finalScale    = mapped into [minScale .. maxScale]
+//
+// Then: effectiveTpR = baseTpR × finalScale
+// With absolute floor/ceiling per TP level.
+
+calcDynTpScale(float tqiVal, float volRatioVal, float tqiWeight, float volWeight, float minScale, float maxScale) =>
+    float tqiComp = clamp(tqiVal, 0.0, 1.0)
+    float volComp = clamp(mapClamp(volRatioVal, 0.5, 2.0, 0.0, 1.0), 0.0, 1.0)
+    float wSum    = tqiWeight + volWeight
+    float wDenom  = wSum > 0 ? wSum : 1.0
+    float rawScale = (tqiComp * tqiWeight + volComp * volWeight) / wDenom
+    // rawScale is 0..1 → map to minScale..maxScale
+    float finalScale = minScale + rawScale * (maxScale - minScale)
+    finalScale
+
+// ══════════════════════════════════════════════════════════
+// 5.5  SELF-LEARNING STORAGE
+// ══════════════════════════════════════════════════════════
+var array<float> signalRBuffer  = array.new<float>()
+var array<int>   gridCount = array.new<int>(9, 0)
+var array<float> gridEwmR  = array.new<float>(9, 0.0)
+
+updateGridCell(int idx, float r) =>
+    if idx >= 0 and idx < 9
+        int   c       = array.get(gridCount, idx) + 1
+        float prevEwm = array.get(gridEwmR, idx)
+        float newEwm  = c == 1 ? r : prevEwm * (1.0 - EWMA_ALPHA) + r * EWMA_ALPHA
+        array.set(gridCount, idx, c)
+        array.set(gridEwmR,  idx, newEwm)
+
+calcRollingStats(int window) =>
+    int n = array.size(signalRBuffer)
+    if n == 0
+        [0.0, 0.0, 0.0]
+    else
+        int startIdx = math.max(0, n - window)
+        float sumR = 0.0
+        int   wins = 0
+        float runningR = 0.0
+        float minRun   = 0.0
+        for i = startIdx to n - 1
+            float r = array.get(signalRBuffer, i)
+            sumR += r
+            if r > 0
+                wins += 1
+            runningR += r
+            if runningR < minRun
+                minRun := runningR
+        int   cnt   = n - startIdx
+        float winRt = cnt > 0 ? float(wins) / float(cnt) : 0.0
+        float avgR  = cnt > 0 ? sumR / float(cnt) : 0.0
+        [winRt, avgR, minRun]
+
+getRegimeEdge(int idx) =>
+    int   c   = array.get(gridCount, idx)
+    float ewm = array.get(gridEwmR,  idx)
+    [c, ewm]
+
+// ══════════════════════════════════════════════════════════
+// 6. BASE CALCULATIONS
+// ══════════════════════════════════════════════════════════
+int   warmupBars  = math.max(WARMUP_FLOOR, math.max(effectiveAtrLen, math.max(effectiveErLen, math.max(effectiveRsiLen, math.max(volLenInput, math.max(pivotLenInput * 2 + 1, math.max(tqiMomLenInput, tqiStructLenInput)))))) + 10)
+bool  isWarmedUp  = bar_index >= warmupBars
+
+float rawAtr      = nz(ta.atr(effectiveAtrLen), 0.0)
+float atrBaseline = nz(ta.sma(rawAtr, atrBaselineLenInput), rawAtr)
+float volRatio    = safeDiv(rawAtr, atrBaseline, 1.0)
+
+float erValue     = calcEfficiencyRatio(close, effectiveErLen)
+
+float effAtr   = useEffAtrInput ? rawAtr * (0.5 + 0.5 * erValue) : rawAtr
+float atrValue = effAtr
+
+// ══════════════════════════════════════════════════════════
+// 6.1  TREND QUALITY INDEX (continuous, every bar)
+// ══════════════════════════════════════════════════════════
+float tqiEr = clamp(erValue, 0.0, 1.0)
+
+bool  hasVolume = nz(volume, 0) > 0
+float volZRaw   = hasVolume ? calcVolumeZ(volLenInput) : na
+float tqiVol    = hasVolume ? mapClamp(volZRaw, -1.0, 2.0, 0.0, 1.0) : mapClamp(volRatio, 0.6, 1.8, 0.0, 1.0)
+
+float structHi = ta.highest(high, tqiStructLenInput)
+float structLo = ta.lowest(low,  tqiStructLenInput)
+float structRange = structHi - structLo
+float pricePos = safeDiv(close - structLo, structRange, 0.5)
+float tqiStruct = clamp(math.abs(pricePos - 0.5) * 2.0, 0.0, 1.0)
+
+float windowChange = close - close[tqiMomLenInput]
+int   alignedBars = 0
+for i = 0 to tqiMomLenInput - 1
+    float barChange = close[i] - close[i + 1]
+    if (windowChange > 0 and barChange > 0) or (windowChange < 0 and barChange < 0)
+        alignedBars += 1
+float tqiMom = float(alignedBars) / float(tqiMomLenInput)
+
+float tqiWeightSum   = tqiWeightErInput + tqiWeightVolInput + tqiWeightStructInput + tqiWeightMomInput
+float tqiWeightDenom = tqiWeightSum > 0 ? tqiWeightSum : 1.0
+float tqiRaw = useTqiInput ? (tqiEr * tqiWeightErInput + tqiVol * tqiWeightVolInput + tqiStruct * tqiWeightStructInput + tqiMom * tqiWeightMomInput) / tqiWeightDenom : 0.5
+float tqi = clamp(tqiRaw, 0.0, 1.0)
+
+// ══════════════════════════════════════════════════════════
+// 6.2  ADAPTIVE MULTIPLIERS
+// ══════════════════════════════════════════════════════════
+float legacyAdaptFactor = useAdaptiveInput ? (1.0 + adaptStrengthInput * (0.5 - erValue)) : 1.0
+
+var float effectiveQualityStrength = qualityStrengthInput
+
+float qualityDeviation = useTqiInput ? math.pow(1.0 - tqi, qualityCurveInput) : 0.5
+float tqiMult = 1.0 - effectiveQualityStrength + effectiveQualityStrength * (0.6 + 0.8 * qualityDeviation)
+
+float symMult = effectiveBaseMult * legacyAdaptFactor * tqiMult
+
+float activeMultRaw  = symMult
+float passiveMultRaw = symMult
+if useTqiInput and useAsymBandsInput
+    float asymTighten = 1.0 - asymStrengthInput * tqi * 0.3
+    float asymWiden   = 1.0 + asymStrengthInput * tqi * 0.4
+    activeMultRaw  := symMult * asymTighten
+    passiveMultRaw := symMult * asymWiden
+
+var float activeMultSm  = na
+var float passiveMultSm = na
+activeMultSm  := na(activeMultSm[1])  ? activeMultRaw  : (multSmoothInput ? activeMultSm[1]  * (1.0 - MULT_SMOOTH_ALPHA) + activeMultRaw  * MULT_SMOOTH_ALPHA : activeMultRaw)
+passiveMultSm := na(passiveMultSm[1]) ? passiveMultRaw : (multSmoothInput ? passiveMultSm[1] * (1.0 - MULT_SMOOTH_ALPHA) + passiveMultRaw * MULT_SMOOTH_ALPHA : passiveMultRaw)
+
+float activeMult  = activeMultSm
+float passiveMult = passiveMultSm
+
+// ══════════════════════════════════════════════════════════
+// 6.3  ADAPTIVE SUPERTREND (asymmetric-aware)
+// ══════════════════════════════════════════════════════════
+var float lowerBand = na
+var float upperBand = na
+var int   stTrend   = 1
+
+int prevTrend = na(stTrend[1]) ? 1 : stTrend[1]
+
+float lowerMult = prevTrend == 1 ? activeMult  : passiveMult
+float upperMult = prevTrend == 1 ? passiveMult : activeMult
+
+float lowerBandRaw = sourceInput - lowerMult * atrValue
+float upperBandRaw = sourceInput + upperMult * atrValue
+
+lowerBand := na(lowerBand[1]) ? lowerBandRaw : (close[1] > lowerBand[1] ? math.max(lowerBandRaw, lowerBand[1]) : lowerBandRaw)
+upperBand := na(upperBand[1]) ? upperBandRaw : (close[1] < upperBand[1] ? math.min(upperBandRaw, upperBand[1]) : upperBandRaw)
+
+bool priceFlipUp   = prevTrend == -1 and close > upperBand[1]
+bool priceFlipDown = prevTrend ==  1 and close < lowerBand[1]
+
+var int trendStartBar = 0
+int trendAge = bar_index - trendStartBar
+
+float prevTqi = nz(tqi[1], 0.5)
+bool charFlipCondBase = useCharFlipInput and useTqiInput and prevTqi > charFlipHighInput and tqi < charFlipLowInput and trendAge >= charFlipMinAgeInput
+bool charFlipDown = charFlipCondBase and prevTrend ==  1 and close < sourceInput
+bool charFlipUp   = charFlipCondBase and prevTrend == -1 and close > sourceInput
+
+bool finalFlipUp   = priceFlipUp   or charFlipUp
+bool finalFlipDown = priceFlipDown or charFlipDown
+
+stTrend := na(stTrend[1]) ? 1 : (finalFlipUp ? 1 : (finalFlipDown ? -1 : prevTrend))
+
+if stTrend != prevTrend
+    trendStartBar := bar_index
+
+float stLine = stTrend == 1 ? lowerBand : upperBand
+
+bool flipUp   = stTrend ==  1 and stTrend[1] == -1
+bool flipDown = stTrend == -1 and stTrend[1] ==  1
+
+// ══════════════════════════════════════════════════════════
+// 6.35  DYNAMIC TP R-MULTIPLES (computed each bar for signal use)
+// ══════════════════════════════════════════════════════════
+bool useDynTp = tpModeInput == "Dynamic"
+
+float dynScale = useDynTp ? calcDynTpScale(tqi, volRatio, dynTpTqiWeightInput, dynTpVolWeightInput, dynTpMinScaleInput, dynTpMaxScaleInput) : 1.0
+
+// Apply scale to base R-multiples, then enforce per-level absolute floors/ceilings.
+// Each TP gets a proportional floor derived from its share of the base spread,
+// preventing all three from collapsing to the same value at low scale.
+float tp1Floor = dynTpFloorR1Input
+float tp2Floor = dynTpFloorR1Input * (fixedTp2R / math.max(fixedTp1R, 0.01))  // proportional: if base is 1/2/3, floor is 0.5/1.0/1.5
+float tp3Floor = dynTpFloorR1Input * (fixedTp3R / math.max(fixedTp1R, 0.01))
+float effTp1R = useDynTp ? clamp(fixedTp1R * dynScale, tp1Floor, dynTpCeilR3Input) : fixedTp1R
+float effTp2R = useDynTp ? clamp(fixedTp2R * dynScale, tp2Floor, dynTpCeilR3Input) : fixedTp2R
+float effTp3R = useDynTp ? clamp(fixedTp3R * dynScale, tp3Floor, dynTpCeilR3Input) : fixedTp3R
+
+// Re-sort after scaling to guarantee tp1 ≤ tp2 ≤ tp3
+float sortedTp1R = math.min(effTp1R, math.min(effTp2R, effTp3R))
+float sortedTp3R = math.max(effTp1R, math.max(effTp2R, effTp3R))
+float sortedTp2R = effTp1R + effTp2R + effTp3R - sortedTp1R - sortedTp3R
+
+// These are the final R-multiples used for this bar's signal
+float liveTp1R = sortedTp1R
+float liveTp2R = sortedTp2R
+float liveTp3R = sortedTp3R
+
+// ══════════════════════════════════════════════════════════
+// 6.4  LEGACY DISPLAY DATA
+// ══════════════════════════════════════════════════════════
+float rsiVal    = nz(ta.rsi(close, effectiveRsiLen), 50.0)
+float volZ      = hasVolume ? volZRaw : 0.0
+
+float pivotHigh = ta.pivothigh(high, pivotLenInput, pivotLenInput)
+float pivotLow  = ta.pivotlow(low,   pivotLenInput, pivotLenInput)
+
+var float lastPivotHigh = na
+var float lastPivotLow  = na
+
+if not na(pivotHigh)
+    lastPivotHigh := pivotHigh
+if not na(pivotLow)
+    lastPivotLow := pivotLow
+
+calcScoreBreakdown(bool isBuy) =>
+    float dirMove  = isBuy ? close[3] - close : close - close[3]
+    float momScore = mapClamp(safeDiv(dirMove, atrValue, 0.0), 0.3, 2.0, 0.0, 17.0)
+    float erScore  = mapClamp(erValue, 0.15, 0.7, 0.0, 17.0)
+    float vScore   = useVolInput and hasVolume ? mapClamp(volZ, 0.0, 3.0, 0.0, 17.0) : BYPASS_SCORE
+    float rsiDepth = isBuy ? math.max(0.0, rsiOSInput - ta.lowest(rsiVal, rsiLookbackInput)) : math.max(0.0, ta.highest(rsiVal, rsiLookbackInput) - rsiOBInput)
+    float rsiScore = useRsiInput ? mapClamp(rsiDepth, 0.0, 15.0, 0.0, 17.0) : BYPASS_SCORE
+    float pivDist     = isBuy and not na(lastPivotLow) ? math.abs(close - lastPivotLow) : (not isBuy and not na(lastPivotHigh) ? math.abs(lastPivotHigh - close) : 0.0)
+    float structScore = useStructureInput ? mapClampInv(safeDiv(pivDist, atrValue, 0.0), 0.0, 1.5, 16.0, 6.0) : BYPASS_SCORE
+    float breakDepth = isBuy ? math.max(0.0, upperBand[1] - close[1]) : math.max(0.0, close[1] - lowerBand[1])
+    float breakScore = mapClamp(safeDiv(breakDepth, atrValue, 0.0), 0.0, 1.0, 0.0, 16.0)
+    [momScore, erScore, vScore, rsiScore, structScore, breakScore]
+
+calcSignalScore(bool isBuy) =>
+    [m, e, v, r, s, b] = calcScoreBreakdown(isBuy)
+    m + e + v + r + s + b
+
+// ══════════════════════════════════════════════════════════
+// 6.5  LEARNING STATE
+// ══════════════════════════════════════════════════════════
+var float allTimeRSum    = 0.0
+var int   allTimeCount   = 0
+var float allTimePeak    = 0.0
+var float allTimeTrough  = 0.0
+var float allTimeCumR    = 0.0
+var int   curWinStreak   = 0
+var int   curLossStreak  = 0
+var int   maxWinStreak   = 0
+var int   maxLossStreak  = 0
+
+var int signalsSinceCalib = 0
+
+if resetLearningInput and not resetLearningInput[1]
+    array.clear(signalRBuffer)
+    for i = 0 to 8
+        array.set(gridCount, i, 0)
+        array.set(gridEwmR,  i, 0.0)
+    effectiveQualityStrength := qualityStrengthInput
+    allTimeRSum    := 0.0
+    allTimeCount   := 0
+    allTimePeak    := 0.0
+    allTimeTrough  := 0.0
+    allTimeCumR    := 0.0
+    curWinStreak   := 0
+    curLossStreak  := 0
+    maxWinStreak   := 0
+    maxLossStreak  := 0
+    signalsSinceCalib := 0
+
+if not useAutoCalibInput
+    effectiveQualityStrength := qualityStrengthInput
+
+int curErBin   = erBin(erValue)
+int curVolBin  = volBin(volRatio)
+int curCellIdx = cellIdx(curErBin, curVolBin)
+
+[curRegimeCount, curRegimeEdge] = getRegimeEdge(curCellIdx)
+
+// ══════════════════════════════════════════════════════════
+// 7. SIGNAL LOGIC
+// ══════════════════════════════════════════════════════════
+bool needsScore = (flipUp or flipDown) and (showSignalsInput or enableAlertsInput or showBreakdownInput)
+float buyScore  = needsScore and flipUp   ? calcSignalScore(true)  : 0.0
+float sellScore = needsScore and flipDown ? calcSignalScore(false) : 0.0
+
+bool confirmedBuy  = flipUp   and barstate.isconfirmed and isWarmedUp
+bool confirmedSell = flipDown and barstate.isconfirmed and isWarmedUp
+
+// ══════════════════════════════════════════════════════════
+// 7.5  UNIFIED ACTIVE TRADE STATE
+// ══════════════════════════════════════════════════════════
+var int   tradeDir       = 0
+var int   tradeEntryBar  = 0
+var float tradeEntry     = na
+var float tradeSl        = na
+var float tradeTp1       = na
+var float tradeTp2       = na
+var float tradeTp3       = na
+var float tradeTp1R      = na   // store actual R used (for realized R calc)
+var float tradeTp2R      = na
+var float tradeTp3R      = na
+var bool  hitTp1         = false
+var bool  hitTp2         = false
+var bool  hitTp3         = false
+var int   tradeCellIdx   = -1
+
+var float lastM = na
+var float lastE = na
+var float lastV = na
+var float lastR = na
+var float lastS = na
+var float lastB = na
+var int   lastDisplaySide = 0
+var int   lastSignalBar   = 0
+
+if confirmedBuy
+    float tEntry = close
+    float slBase = not na(lastPivotLow) ? lastPivotLow : low
+    float rawSl  = slBase - effectiveSlMult * atrValue
+    float minSl  = tEntry - effectiveSlMult * atrValue
+    float tSl    = math.min(rawSl, minSl)
+    float risk   = tEntry - tSl
+    tradeDir      := 1
+    tradeEntryBar := bar_index
+    tradeEntry    := tEntry
+    tradeSl       := tSl
+    tradeTp1      := tEntry + risk * liveTp1R
+    tradeTp2      := tEntry + risk * liveTp2R
+    tradeTp3      := tEntry + risk * liveTp3R
+    tradeTp1R     := liveTp1R
+    tradeTp2R     := liveTp2R
+    tradeTp3R     := liveTp3R
+    hitTp1        := false
+    hitTp2        := false
+    hitTp3        := false
+    tradeCellIdx  := curCellIdx
+    if showBreakdownInput
+        [m, e, v, r, s, b] = calcScoreBreakdown(true)
+        lastM := m
+        lastE := e
+        lastV := v
+        lastR := r
+        lastS := s
+        lastB := b
+    lastDisplaySide := 1
+    lastSignalBar   := bar_index
+
+if confirmedSell
+    float tEntry = close
+    float slBase = not na(lastPivotHigh) ? lastPivotHigh : high
+    float rawSl  = slBase + effectiveSlMult * atrValue
+    float minSl  = tEntry + effectiveSlMult * atrValue
+    float tSl    = math.max(rawSl, minSl)
+    float risk   = tSl - tEntry
+    tradeDir      := -1
+    tradeEntryBar := bar_index
+    tradeEntry    := tEntry
+    tradeSl       := tSl
+    tradeTp1      := tEntry - risk * liveTp1R
+    tradeTp2      := tEntry - risk * liveTp2R
+    tradeTp3      := tEntry - risk * liveTp3R
+    tradeTp1R     := liveTp1R
+    tradeTp2R     := liveTp2R
+    tradeTp3R     := liveTp3R
+    hitTp1        := false
+    hitTp2        := false
+    hitTp3        := false
+    tradeCellIdx  := curCellIdx
+    if showBreakdownInput
+        [m, e, v, r, s, b] = calcScoreBreakdown(false)
+        lastM := m
+        lastE := e
+        lastV := v
+        lastR := r
+        lastS := s
+        lastB := b
+    lastDisplaySide := -1
+    lastSignalBar   := bar_index
+
+// ══════════════════════════════════════════════════════════
+// 8. PLOTS
+// ══════════════════════════════════════════════════════════
+int lineTransp = showTqiColorInput and useTqiInput ? clampInt(int(math.round(mapClampInv(tqi, 0.1, 0.9, 70.0, 0.0))), 0, 100) : 0
+color stLineColor = stTrend == 1 ? color.new(bullColorInput, lineTransp) : color.new(bearColorInput, lineTransp)
+
+plot(showBandsInput and isWarmedUp ? stLine : na, "SuperTrend", color = stLineColor, linewidth = 2)
+
+bgcolor(showBgInput and isWarmedUp ? (stTrend == 1 ? BULL_BG : BEAR_BG) : na, title = "Trend Background")
+
+// ══════════════════════════════════════════════════════════
+// 9. LABELS & SHAPES
+// ══════════════════════════════════════════════════════════
+string scoreRefStr = "/" + str.tostring(MAX_SCORE_REF)
+
+// TP mode tag for tooltip
+string tpModeTag = useDynTp ? "Dynamic ×" + str.tostring(dynScale, "#.00") : "Fixed"
+
+if showSignalsInput and confirmedBuy
+    label.new(bar_index, low, "▲ BUY  " + str.tostring(buyScore, "#"), color = bullColorInput, textcolor = LABEL_TEXT, style = label.style_label_up, size = size.small, tooltip = "ARP — BUY\nScore: " + str.tostring(buyScore, "#.0") + scoreRefStr + "\nTQI: " + str.tostring(tqi, "#.00") + "\nER: " + str.tostring(erValue, "#.00") + "\nRSI: " + str.tostring(rsiVal, "#.0") + "\nVol Z: " + str.tostring(volZ, "#.00") + "\nTP Mode: " + tpModeTag + "\nR: " + str.tostring(liveTp1R, "#.0") + "/" + str.tostring(liveTp2R, "#.0") + "/" + str.tostring(liveTp3R, "#.0"))
+
+if showSignalsInput and confirmedSell
+    label.new(bar_index, high, "▼ SELL  " + str.tostring(sellScore, "#"), color = bearColorInput, textcolor = LABEL_TEXT, style = label.style_label_down, size = size.small, tooltip = "ARP — SELL\nScore: " + str.tostring(sellScore, "#.0") + scoreRefStr + "\nTQI: " + str.tostring(tqi, "#.00") + "\nER: " + str.tostring(erValue, "#.00") + "\nRSI: " + str.tostring(rsiVal, "#.0") + "\nVol Z: " + str.tostring(volZ, "#.00") + "\nTP Mode: " + tpModeTag + "\nR: " + str.tostring(liveTp1R, "#.0") + "/" + str.tostring(liveTp2R, "#.0") + "/" + str.tostring(liveTp3R, "#.0"))
+
+// ── Sniper-style TP/SL ──
+var line  lineEntry = na
+var line  lineSL    = na
+var line  lineTp1   = na
+var line  lineTp2   = na
+var line  lineTp3   = na
+var label lbEntry   = na
+var label lbSL      = na
+var label lbTp1     = na
+var label lbTp2     = na
+var label lbTp3     = na
+
+if showRiskInput
+    if (confirmedBuy or confirmedSell) and not na(tradeSl)
+        line.delete(lineEntry)
+        line.delete(lineSL)
+        line.delete(lineTp1)
+        line.delete(lineTp2)
+        line.delete(lineTp3)
+        label.delete(lbEntry)
+        label.delete(lbSL)
+        label.delete(lbTp1)
+        label.delete(lbTp2)
+        label.delete(lbTp3)
+
+        int lineEnd  = bar_index + labelOffsetInput
+        int labelPos = bar_index + labelOffsetInput + 2
+
+        // Dynamic TP labels show actual R-multiple used
+        string tp1Lbl = "TP1 " + str.tostring(tradeTp1, format.mintick) + (useDynTp ? " (" + str.tostring(tradeTp1R, "#.0") + "R)" : "")
+        string tp2Lbl = "TP2 " + str.tostring(tradeTp2, format.mintick) + (useDynTp ? " (" + str.tostring(tradeTp2R, "#.0") + "R)" : "")
+        string tp3Lbl = "TP3 " + str.tostring(tradeTp3, format.mintick) + (useDynTp ? " (" + str.tostring(tradeTp3R, "#.0") + "R)" : "")
+
+        lineEntry := line.new(bar_index, tradeEntry, lineEnd, tradeEntry, color = color.new(color.gray, 0), width = 2, style = line.style_solid)
+        lineSL    := line.new(bar_index, tradeSl,    lineEnd, tradeSl,    color = slColorInput,             width = 2, style = line.style_solid)
+        lineTp1   := line.new(bar_index, tradeTp1,   lineEnd, tradeTp1,   color = tpColorInput,             width = 1, style = line.style_dashed)
+        lineTp2   := line.new(bar_index, tradeTp2,   lineEnd, tradeTp2,   color = tpColorInput,             width = 1, style = line.style_dashed)
+        lineTp3   := line.new(bar_index, tradeTp3,   lineEnd, tradeTp3,   color = tpColorInput,             width = 2, style = line.style_dashed)
+
+        lbEntry := label.new(labelPos, tradeEntry, "ENTRY " + str.tostring(tradeEntry, format.mintick), color = color.new(color.gray, 60), textcolor = TEXT_BRIGHT, style = label.style_label_left, size = size.small)
+        lbSL    := label.new(labelPos, tradeSl,    "SL "    + str.tostring(tradeSl,    format.mintick), color = color.new(slColorInput, 60), textcolor = TEXT_BRIGHT, style = label.style_label_left, size = size.small)
+        lbTp1   := label.new(labelPos, tradeTp1,   tp1Lbl, color = color.new(tpColorInput, 60), textcolor = TEXT_BRIGHT, style = label.style_label_left, size = size.small)
+        lbTp2   := label.new(labelPos, tradeTp2,   tp2Lbl, color = color.new(tpColorInput, 60), textcolor = TEXT_BRIGHT, style = label.style_label_left, size = size.small)
+        lbTp3   := label.new(labelPos, tradeTp3,   tp3Lbl, color = color.new(tpColorInput, 60), textcolor = TEXT_BRIGHT, style = label.style_label_left, size = size.small)
+
+    else if tradeDir != 0 and not na(lineEntry)
+        int newLineEnd  = bar_index + labelOffsetInput
+        int newLabelPos = bar_index + labelOffsetInput + 2
+
+        line.set_x2(lineEntry, newLineEnd)
+        line.set_x2(lineSL, newLineEnd)
+        line.set_x2(lineTp1, newLineEnd)
+        line.set_x2(lineTp2, newLineEnd)
+        line.set_x2(lineTp3, newLineEnd)
+
+        label.set_x(lbEntry, newLabelPos)
+        label.set_x(lbSL, newLabelPos)
+        label.set_x(lbTp1, newLabelPos)
+        label.set_x(lbTp2, newLabelPos)
+        label.set_x(lbTp3, newLabelPos)
+
+// ══════════════════════════════════════════════════════════
+// HIT DETECTION + LEARNING FEEDBACK
+// ══════════════════════════════════════════════════════════
+if tradeDir != 0 and barstate.isconfirmed and not na(tradeEntry) and not na(tradeSl) and bar_index > tradeEntryBar
+    bool tp1Reached = tradeDir ==  1 ? high >= tradeTp1 : low <= tradeTp1
+    bool tp2Reached = tradeDir ==  1 ? high >= tradeTp2 : low <= tradeTp2
+    bool tp3Reached = tradeDir ==  1 ? high >= tradeTp3 : low <= tradeTp3
+    bool slHit      = tradeDir ==  1 ? low  <= tradeSl  : high >= tradeSl
+
+    int  tradeAge   = bar_index - tradeEntryBar
+    bool timeoutHit = tradeAge >= tradeMaxAgeInput
+
+    if tp1Reached and not hitTp1
+        hitTp1 := true
+        if showHitsInput and showRiskInput and not na(lineTp1)
+            line.set_color(lineTp1, HIT_COLOR)
+            line.set_style(lineTp1, line.style_solid)
+            label.set_text(lbTp1, "TP1 ✓ " + str.tostring(tradeTp1, format.mintick))
+            label.set_color(lbTp1, color.new(HIT_COLOR, 40))
+
+    if tp2Reached and not hitTp2
+        hitTp2 := true
+        if showHitsInput and showRiskInput and not na(lineTp2)
+            line.set_color(lineTp2, HIT_COLOR)
+            line.set_style(lineTp2, line.style_solid)
+            label.set_text(lbTp2, "TP2 ✓ " + str.tostring(tradeTp2, format.mintick))
+            label.set_color(lbTp2, color.new(HIT_COLOR, 40))
+
+    if tp3Reached and not hitTp3
+        hitTp3 := true
+        if showHitsInput and showRiskInput and not na(lineTp3)
+            line.set_color(lineTp3, HIT_COLOR)
+            line.set_style(lineTp3, line.style_solid)
+            label.set_text(lbTp3, "TP3 ✓ " + str.tostring(tradeTp3, format.mintick))
+            label.set_color(lbTp3, color.new(HIT_COLOR, 40))
+
+    if hitTp3 or slHit or timeoutHit
+        // Use per-trade stored R-multiples for accurate realized R
+        float useTp1R = nz(tradeTp1R, fixedTp1R)
+        float useTp2R = nz(tradeTp2R, fixedTp2R)
+        float useTp3R = nz(tradeTp3R, fixedTp3R)
+
+        float realizedR = 0.0
+        if hitTp3 or slHit
+            realizedR := calcRealizedR(slHit, hitTp1, hitTp2, hitTp3, useTp1R, useTp2R, useTp3R)
+        else
+            realizedR := calcTimeoutR(hitTp1, hitTp2, hitTp3, useTp1R, useTp2R, useTp3R)
+        realizedR := clamp(realizedR, -1.0, useTp3R)
+
+        array.push(signalRBuffer, realizedR)
+        while array.size(signalRBuffer) > MAX_HISTORY_SIGS
+            array.shift(signalRBuffer)
+        allTimeRSum  += realizedR
+        allTimeCount += 1
+        allTimeCumR  += realizedR
+        if allTimeCumR > allTimePeak
+            allTimePeak := allTimeCumR
+        float curDD = allTimeCumR - allTimePeak
+        if curDD < allTimeTrough
+            allTimeTrough := curDD
+        if realizedR > 0
+            curWinStreak  += 1
+            curLossStreak := 0
+            if curWinStreak > maxWinStreak
+                maxWinStreak := curWinStreak
+        else
+            curLossStreak += 1
+            curWinStreak  := 0
+            if curLossStreak > maxLossStreak
+                maxLossStreak := curLossStreak
+
+        updateGridCell(tradeCellIdx, realizedR)
+
+        signalsSinceCalib += 1
+        if useAutoCalibInput and array.size(signalRBuffer) >= calibWindowInput and signalsSinceCalib >= calibCooldownInput
+            int n = array.size(signalRBuffer)
+            int startIdx = math.max(0, n - calibWindowInput)
+            float sumR = 0.0
+            for i = startIdx to n - 1
+                sumR += array.get(signalRBuffer, i)
+            float postAvgR = sumR / float(n - startIdx)
+            if postAvgR < calibBadRInput
+                float drift = effectiveQualityStrength > qualityStrengthInput ? -calibStepQInput : calibStepQInput
+                effectiveQualityStrength := clamp(effectiveQualityStrength + drift, calibMinQInput, calibMaxQInput)
+                signalsSinceCalib := 0
+            else if postAvgR > calibGoodRInput
+                signalsSinceCalib := 0
+
+        tradeDir     := 0
+        tradeCellIdx := -1
+
+// ══════════════════════════════════════════════════════════
+// 10. DASHBOARD
+// ══════════════════════════════════════════════════════════
+[dashWinRate, dashAvgR, dashWindowDD] = calcRollingStats(calibWindowInput)
+
+string trendStr  = stTrend == 1 ? "Bullish ▲" : "Bearish ▼"
+color  trendCol  = stTrend == 1 ? bullColorInput : bearColorInput
+
+string signalStr = confirmedBuy ? "BUY" : (confirmedSell ? "SELL" : "—")
+color  signalCol = confirmedBuy ? bullColorInput : (confirmedSell ? bearColorInput : TEXT_MUTED)
+
+string regimeStr = na(erValue) ? "—" : (erValue >= ER_HIGH_THRESH ? "Trending" : (erValue >= ER_LOW_THRESH ? "Mixed" : "Choppy"))
+color  regimeCol = na(erValue) ? TEXT_MUTED : (erValue >= ER_HIGH_THRESH ? bullColorInput : (erValue >= ER_LOW_THRESH ? NEUTRAL_YELLOW : bearColorInput))
+
+string volRegStr = volRatio < VOL_LOW_THRESH ? "Low Vol" : (volRatio < VOL_HIGH_THRESH ? "Norm Vol" : "High Vol")
+
+string presetStr = resolvedPreset
+
+string tqiStr   = useTqiInput ? str.tostring(tqi, "#.00") : "off"
+color  tqiCol   = useTqiInput ? (tqi > 0.6 ? bullColorInput : (tqi > 0.35 ? NEUTRAL_YELLOW : bearColorInput)) : TEXT_MUTED
+string qStrStr  = useTqiInput ? str.tostring(effectiveQualityStrength, "#.00") : "off"
+color  qStrCol  = useTqiInput ? (effectiveQualityStrength > qualityStrengthInput ? NEUTRAL_YELLOW : (effectiveQualityStrength < qualityStrengthInput ? bullColorInput : TEXT_COLOR)) : TEXT_MUTED
+
+string erStr     = na(erValue) ? "—" : str.tostring(erValue, "#.00")
+string rsiStr    = na(rsiVal) ? "—" : str.tostring(rsiVal, "#.0")
+string volStr    = hasVolume ? str.tostring(volZ, "#.00") + "σ" : "n/a"
+string warmStr   = isWarmedUp ? "Ready" : str.tostring(warmupBars - bar_index) + " bars"
+
+int    barsAgo  = bar_index - lastSignalBar
+string sideHdr  = lastDisplaySide ==  1 ? "Last: BUY (" + str.tostring(barsAgo) + "b ago)" : (lastDisplaySide == -1 ? "Last: SELL (" + str.tostring(barsAgo) + "b ago)" : "Last: —")
+color  sideCol  = lastDisplaySide ==  1 ? bullColorInput : (lastDisplaySide == -1 ? bearColorInput : TEXT_MUTED)
+bool   hasBreakdown = lastDisplaySide != 0 and showBreakdownInput
+string mStr  = lastDisplaySide != 0 and not na(lastM) ? str.tostring(lastM, "#.0") : "—"
+string eStrBd= lastDisplaySide != 0 and not na(lastE) ? str.tostring(lastE, "#.0") : "—"
+string vStrFx= lastDisplaySide != 0 and not na(lastV) ? str.tostring(lastV, "#.0") : "—"
+string rStr  = lastDisplaySide != 0 and not na(lastR) ? str.tostring(lastR, "#.0") : "—"
+string sStr  = lastDisplaySide != 0 and not na(lastS) ? str.tostring(lastS, "#.0") : "—"
+string bStr  = lastDisplaySide != 0 and not na(lastB) ? str.tostring(lastB, "#.0") : "—"
+
+string tqiErStr     = useTqiInput ? str.tostring(tqiEr,     "#.00") : "—"
+string tqiVolStr    = useTqiInput ? str.tostring(tqiVol,    "#.00") : "—"
+string tqiStructStr = useTqiInput ? str.tostring(tqiStruct, "#.00") : "—"
+string tqiMomStr    = useTqiInput ? str.tostring(tqiMom,    "#.00") : "—"
+
+int    sigCount      = array.size(signalRBuffer)
+string winRateStr    = sigCount == 0 ? "—" : str.tostring(dashWinRate * 100, "#.0") + "%"
+string avgRStr       = sigCount == 0 ? "—" : str.tostring(dashAvgR, "+#.00;-#.00") + "R"
+string winDDStr      = sigCount == 0 ? "—" : str.tostring(dashWindowDD, "#.00") + "R"
+string allDDStr      = allTimeCount == 0 ? "—" : str.tostring(allTimeTrough, "#.00") + "R"
+string streakStr     = allTimeCount == 0 ? "—" : "W:" + str.tostring(curWinStreak) + "/" + str.tostring(maxWinStreak) + " L:" + str.tostring(curLossStreak) + "/" + str.tostring(maxLossStreak)
+string sampleStr     = str.tostring(sigCount) + "/" + str.tostring(MAX_HISTORY_SIGS)
+string regimeEdgeStr = curRegimeCount == 0 ? "—" : str.tostring(curRegimeEdge, "+#.00;-#.00") + "R (" + str.tostring(curRegimeCount) + ")"
+
+color  winRateCol = sigCount < 5 ? TEXT_MUTED : (dashWinRate >= 0.5 ? bullColorInput : bearColorInput)
+color  avgRCol    = sigCount < 5 ? TEXT_MUTED : (dashAvgR > 0 ? bullColorInput : bearColorInput)
+color  regEdgeCol = curRegimeCount < 5 ? TEXT_MUTED : (curRegimeEdge > 0 ? bullColorInput : bearColorInput)
+
+// TP Mode dashboard strings
+string tpModeStr   = useDynTp ? "Dynamic" : "Fixed"
+string dynScaleStr = useDynTp ? "×" + str.tostring(dynScale, "#.00") : "—"
+string liveRStr    = str.tostring(liveTp1R, "#.0") + " / " + str.tostring(liveTp2R, "#.0") + " / " + str.tostring(liveTp3R, "#.0")
+color  tpModeCol   = useDynTp ? (dynScale > 1.2 ? bullColorInput : (dynScale < 0.8 ? bearColorInput : TEXT_COLOR)) : TEXT_COLOR
+
+if showDashInput and barstate.islast
+    var table dashTable = table.new(getDashPos(dashPosStr), 2, 50, bgcolor = TABLE_BG, border_color = TABLE_BORDER, border_width = 1, frame_color = TABLE_BORDER, frame_width = 1)
+
+    table.cell(dashTable, 0, 0, "WillyAlgoTrader", text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+    table.cell(dashTable, 1, 0, "ARP",          text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+
+    table.cell(dashTable, 0, 1, "Preset",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 1, presetStr, text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 2, "Trend",   text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 2, trendStr,  text_color = trendCol,   text_size = size.small)
+
+    table.cell(dashTable, 0, 3, "TQI",     text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 3, tqiStr,    text_color = tqiCol,     text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 4, "Q.Strength", text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 4, qStrStr,      text_color = qStrCol,    text_size = size.small)
+
+    table.cell(dashTable, 0, 5, "Signal",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 5, signalStr, text_color = signalCol,  text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 6, "Regime",  text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 6, regimeStr + " / " + volRegStr, text_color = regimeCol, text_size = size.small)
+
+    table.cell(dashTable, 0, 7, "ER",      text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 7, erStr,     text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 8, "RSI",     text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 8, rsiStr,    text_color = TEXT_COLOR, text_size = size.small)
+
+    table.cell(dashTable, 0, 9, "Vol Z",   text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 9, volStr,    text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    // ── TP Mode rows ──
+    table.cell(dashTable, 0, 10, "TP Mode",  text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 10, tpModeStr,  text_color = tpModeCol,  text_size = size.small)
+
+    table.cell(dashTable, 0, 11, "TP Scale",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 11, dynScaleStr, text_color = tpModeCol,  text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 12, "Live R",    text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 12, liveRStr,    text_color = TEXT_COLOR, text_size = size.small)
+
+    table.cell(dashTable, 0, 13, "Status",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+    table.cell(dashTable, 1, 13, warmStr,   text_color = isWarmedUp ? bullColorInput : NEUTRAL_YELLOW, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+
+    table.cell(dashTable, 0, 14, "Version", text_color = TEXT_MUTED, text_size = size.small)
+    table.cell(dashTable, 1, 14, INDICATOR_VERSION, text_color = TEXT_MUTED, text_size = size.small)
+
+    int rowCursor = 15
+    if showTqiBreakdownInput and useTqiInput
+        table.cell(dashTable, 0, rowCursor, "TQI Components", text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        table.cell(dashTable, 1, rowCursor, "0..1",           text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Efficiency",  text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, tqiErStr,      text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Volatility",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, tqiVolStr,     text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Structure",   text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, tqiStructStr,  text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Mom Persist", text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, tqiMomStr,     text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+
+    if showPerfInput
+        table.cell(dashTable, 0, rowCursor, "Performance", text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        table.cell(dashTable, 1, rowCursor, sampleStr,     text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "Win Rate",   text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, winRateStr,   text_color = winRateCol, text_size = size.small)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "Avg R",      text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, avgRStr,      text_color = avgRCol,    text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "Window DD",  text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, winDDStr,     text_color = sigCount < 5 ? TEXT_MUTED : bearColorInput, text_size = size.small)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "All-Time DD", text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, allDDStr,      text_color = allTimeCount == 0 ? TEXT_MUTED : bearColorInput, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "Streak W/L", text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, streakStr,    text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+
+        table.cell(dashTable, 0, rowCursor, "Regime Edge", text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, regimeEdgeStr, text_color = regEdgeCol, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+
+    if hasBreakdown
+        table.cell(dashTable, 0, rowCursor, sideHdr, text_color = sideCol,     bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        table.cell(dashTable, 1, rowCursor, "/" + str.tostring(MAX_SCORE_REF), text_color = HEADER_TEXT, bgcolor = HEADER_BG, text_size = size.small, text_halign = text.align_center)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Momentum",   text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, mStr,         text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Efficiency", text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, eStrBd,       text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Volume",     text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, vStrFx,       text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "RSI Depth",  text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, rStr,         text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "Structure",  text_color = TEXT_MUTED, text_size = size.small)
+        table.cell(dashTable, 1, rowCursor, sStr,         text_color = TEXT_COLOR, text_size = size.small)
+        rowCursor += 1
+        table.cell(dashTable, 0, rowCursor, "ST Break",   text_color = TEXT_MUTED, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        table.cell(dashTable, 1, rowCursor, bStr,         text_color = TEXT_COLOR, text_size = size.small, bgcolor = TABLE_ROW_ALT)
+        rowCursor += 1
+
+// ══════════════════════════════════════════════════════════
+// 11. WATERMARK
+// ══════════════════════════════════════════════════════════
+if barstate.islast and showWatermarkInput
+    var table wmTable = table.new(position.bottom_center, 1, 1, bgcolor = color.new(color.black, 100), border_color = color.new(color.black, 100), border_width = 0, frame_color = color.new(color.black, 100), frame_width = 0)
+    table.cell(wmTable, 0, 0, "WillyAlgoTrader", text_color = WM_COLOR, text_size = size.normal, text_halign = text.align_center, bgcolor = color.new(color.black, 100))
+
+// ══════════════════════════════════════════════════════════
+// 12. ALERTS
+// ══════════════════════════════════════════════════════════
+if enableAlertsInput and confirmedBuy
+    string tickerStr   = syminfo.tickerid
+    string tfStr       = timeframe.period
+    string priceStr    = str.tostring(close, format.mintick)
+    string slStrAlert  = str.tostring(tradeSl,  format.mintick)
+    string tp1StrAlert = str.tostring(tradeTp1, format.mintick)
+    string tp2StrAlert = str.tostring(tradeTp2, format.mintick)
+    string tp3StrAlert = str.tostring(tradeTp3, format.mintick)
+    string buyScoreStr = str.tostring(buyScore, "#")
+    string tqiAlertStr = str.tostring(tqi, "#.00")
+    string tpModeAlert = useDynTp ? "dynamic" : "fixed"
+    string dynScaleAlert = useDynTp ? str.tostring(dynScale, "#.00") : "1.00"
+    string buyJson = '{"action":"buy","ticker":"' + tickerStr + '","tf":"' + tfStr + '","price":' + priceStr + ',"sl":' + slStrAlert + ',"tp1":' + tp1StrAlert + ',"tp2":' + tp2StrAlert + ',"tp3":' + tp3StrAlert + ',"score":' + buyScoreStr + ',"tqi":' + tqiAlertStr + ',"tp_mode":"' + tpModeAlert + '","tp_scale":' + dynScaleAlert + '}'
+    string buyText = "🟢 BUY | " + tickerStr + " | TF: " + tfStr + " | Price: " + priceStr + " | TQI: " + tqiAlertStr + " | Score: " + buyScoreStr + " | SL: " + slStrAlert + " | TP1: " + tp1StrAlert + " | TP2: " + tp2StrAlert + " | TP3: " + tp3StrAlert + " | TP: " + tpModeAlert + " ×" + dynScaleAlert
+    alert(webhookInput ? buyJson : buyText, alert.freq_once_per_bar_close)
+
+if enableAlertsInput and confirmedSell
+    string tickerStr   = syminfo.tickerid
+    string tfStr       = timeframe.period
+    string priceStr    = str.tostring(close, format.mintick)
+    string slStrAlert  = str.tostring(tradeSl,  format.mintick)
+    string tp1StrAlert = str.tostring(tradeTp1, format.mintick)
+    string tp2StrAlert = str.tostring(tradeTp2, format.mintick)
+    string tp3StrAlert = str.tostring(tradeTp3, format.mintick)
+    string sellScoreStr = str.tostring(sellScore, "#")
+    string tqiAlertStr  = str.tostring(tqi, "#.00")
+    string tpModeAlert  = useDynTp ? "dynamic" : "fixed"
+    string dynScaleAlert = useDynTp ? str.tostring(dynScale, "#.00") : "1.00"
+    string sellJson = '{"action":"sell","ticker":"' + tickerStr + '","tf":"' + tfStr + '","price":' + priceStr + ',"sl":' + slStrAlert + ',"tp1":' + tp1StrAlert + ',"tp2":' + tp2StrAlert + ',"tp3":' + tp3StrAlert + ',"score":' + sellScoreStr + ',"tqi":' + tqiAlertStr + ',"tp_mode":"' + tpModeAlert + '","tp_scale":' + dynScaleAlert + '}'
+    string sellText = "🔴 SELL | " + tickerStr + " | TF: " + tfStr + " | Price: " + priceStr + " | TQI: " + tqiAlertStr + " | Score: " + sellScoreStr + " | SL: " + slStrAlert + " | TP1: " + tp1StrAlert + " | TP2: " + tp2StrAlert + " | TP3: " + tp3StrAlert + " | TP: " + tpModeAlert + " ×" + dynScaleAlert
+    alert(webhookInput ? sellJson : sellText, alert.freq_once_per_bar_close)

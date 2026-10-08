@@ -1,0 +1,46 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+*.spec
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── PyInstaller output ─────────────────────────────────────────────────────────
+# Keep source; exclude compiled artefacts
+MONARCH/dist/
+MONARCH/build/
+MONARCH/*.spec
+MONARCH/version_info.txt
+
+# Per-installation config (holds personal account numbers) — never commit.
+# Normally lives in NinjaTrader 8\MONARCH\; this guards against a stray copy here.
+MONARCH/config.json
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ── NT8 generated files (not source) ──────────────────────────────────────────
+*.suo
+*.user
+
+# ── NT8 compile error logs ────────────────────────────────────────────────────
+Error*.csv
+Errors.csv
+
+# ── Claude Code local state (settings, worktrees) — not project source ────────
+.claude/
