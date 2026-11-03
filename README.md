@@ -14,6 +14,7 @@ Support the work: [Buy Me a Coffee](https://buymeacoffee.com/greybeardcode)
 | [`gbPullback5Bar/`](gbPullback5Bar) | gbPullback5Bar strategy |
 | [`AUGUR/`](AUGUR) | AUGUR Trade Intelligence - HTML trade reports from NT8 Executions exports |
 | [`gbRedFolder/`](gbRedFolder) | Red Folder news-event strategy |
+| [`GreyKo/`](GreyKo) | GreyKo renko bar type: the ninZaRenko/KingRenko$ grid with a Traded / Full Brick OHLC choice |
 | [`TradeSaber-Predator/`](TradeSaber-Predator) | Indicators for TradeSaber's Predator (ADX filter, WilliamsR, PaperFeet) |
 | [`programming-projects/`](programming-projects) | Smaller NinjaScript projects: ATM trail manager, MultiDayDownload, PanaZilla, SATS, Terminator V2, UltimateSignals tooling |
 | [`templates/`](templates) | Blank strategy template |
